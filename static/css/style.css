@@ -1,15 +1,27 @@
 /* Cleaned and minimal ShareLite stylesheet */
 
 :root {
-  --bg1: #0f172a;
-  --bg2: #111827;
-  --card: #1f2937;
-  --muted: #9ca3af;
-  --accent: #22c55e;
-  --accent-2: #60a5fa;
-  --text: #e5e7eb;
-  --danger: #ef4444;
+  --bg1: #f3f4f6;
+  --bg2: #e5e7eb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #16a34a;
+  --accent-2: #2563eb;
+  --text: #000000;
+  --danger: #dc2626;
   --qr-default-size: 120px;
+
+  /* header/footer/colors as variables for easy theming */
+  /* make topbar opaque in light theme */
+  --header-bg: var(--card);
+  --header-border: rgba(255,255,255,0.06);
+  --footer-bg: rgba(0,0,0,0.04);
+  --footer-border: rgba(255,255,255,0.04);
+  --card-border: rgba(255,255,255,0.06);
+
+  /* layout tuning */
+  --header-height: 56px;   /* fixed header height (must match .app-header height) */
+  --container-gap: 8px;    /* minimal equal spacing above/below container */
 }
 
 /* Reset */
@@ -17,15 +29,24 @@
 html, body {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans";
   color: var(--text);
   background: linear-gradient(135deg, var(--bg1), var(--bg2));
+  padding-top: var(--header-height); /* reserve exactly the header height */
+}
+
+/* Force all text to render black */
+body, body * {
+  color: #000000 !important;
 }
 
 /* Layout */
-.container { max-width: 900px; margin: 12px auto; padding: 0 12px; width: 100%; }
-.app-header, .app-footer {
+.container { max-width: 900px; margin: var(--container-gap) auto; padding: 0 12px; width: 100%; flex: 1; }
+.app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -51,8 +72,8 @@ html, body {
 .nav a:hover, .nav a:focus { color: var(--accent); background: rgba(255,255,255,0.02); }
 
 /* Cards / hero */
-.card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; margin: 12px 0; }
-.hero { text-align: center; margin: 12px 0; }
+.card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; margin: var(--container-gap) 0; }
+.hero { text-align: center; margin: var(--container-gap) 0; }
 
 /* Buttons */
 .btn { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid rgba(255,255,255,0.16); border-radius: 8px; padding: 10px 14px; cursor: pointer; text-decoration: none; display: inline-block; }
@@ -85,11 +106,40 @@ html, body {
 .hidden { display: none !important; }
 
 /* Footer */
-.footer-inner { display: flex; flex-direction: column; gap: 4px; align-items: center; margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; }
-.footer-line { color: var(--text); font-size: 13px; }
-.footer-links { font-size: 13px; color: var(--muted); }
-.footer-links a { color: var(--muted); text-decoration: none; margin: 0 6px; }
-.footer-links a:hover { color: var(--text); text-decoration: underline; }
+.app-footer {
+  background: var(--footer-bg);
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--footer-border);
+  box-shadow: 0 -6px 12px rgba(2,6,23,0.28);
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* center the .footer-inner */
+  margin-top: auto;
+}
+
+.footer-inner {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 8px 12px;
+  text-align: left;
+  max-width: 900px;
+  width: 100%;
+}
+
+/* keep footer stacked and centered on small screens */
+@media (max-width: 720px) {
+  .footer-inner {
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    text-align: center;
+  }
+}
 
 /* QR card */
 .qr-card { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; --qr-size: var(--qr-default-size); }
@@ -98,6 +148,59 @@ html, body {
 .qr-address { text-align: center; margin-top: 6px; font-weight: 600; }
 .qr-grid { display: flex; align-items: center; justify-content: center; }
 
+/* Hide mobile menu toggle by default (show only under the mobile breakpoint) */
+#navToggle { display: none; }
+
+/* differentiate topbar and footer (use variables so theme overrides reliably apply) */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  z-index: 9999;
+  background: var(--header-bg);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.45);
+}
+.app-footer {
+  background: var(--footer-bg);
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--footer-border);
+  box-shadow: 0 -6px 12px rgba(2,6,23,0.28);
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* center the .footer-inner */
+  margin-top: auto;
+}
+
+/* dark theme overrides */
+.theme-dark {
+  --bg1: #0f172a;
+  --bg2: #111827;
+  --card: #1f2937;
+  --muted: #9ca3af;
+  --accent: #22c55e;
+  --accent-2: #60a5fa;
+  --text: #e5e7eb;
+  --danger: #ef4444;
+
+  /* header/footer variables for dark theme */
+  --header-bg: rgba(2,6,23,0.6);
+  --header-border: rgba(255,255,255,0.04);
+  --footer-bg: rgba(0,0,0,0.18);
+  --footer-border: rgba(255,255,255,0.03);
+  --card-border: rgba(255,255,255,0.06);
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .qr-card { grid-template-columns: 1fr; }
@@ -105,21 +208,13 @@ html, body {
 }
 
 @media (max-width: 720px) {
-  #navToggle { display: inline-flex; }
+  /* show toggle on small screens; swap visual order so theme toggle appears before hamburger */
+  #navToggle { display: inline-flex; order: 2; }
+  #themeToggle { order: 1; }
+
   .nav { display: none; position: absolute; top: 56px; right: 14px; flex-direction: column; gap: 6px; background: var(--card); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px; min-width: 180px; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
   .app-header.open .nav { display: flex; }
   .nav a { padding: 8px 10px; border-radius: 8px; }
   .logo-img { width: 32px; height: 32px; }
   .name { font-size: 16px; }
-}
-
-.theme-light {
-  --bg1: #f3f4f6;
-  --bg2: #e5e7eb;
-  --card: #ffffff;
-  --muted: #6b7280;
-  --accent: #16a34a;
-  --accent-2: #2563eb;
-  --text: #0a0a0a;
-  --danger: #dc2626;
 }

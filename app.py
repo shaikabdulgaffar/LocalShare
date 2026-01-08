@@ -186,7 +186,7 @@ def handle_large_file(e):
 def handle_not_found(e):
     if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
         return jsonify({"ok": False, "error": "Not found"}), 404
-    return render_template("404.html"), 404
+    return render_template("app.html", page="404"), 404
 
 
 # ---------------------------------------
@@ -195,25 +195,23 @@ def handle_not_found(e):
 @app.route("/")
 def index():
     ip_candidates = get_local_ip_candidates()
-    return render_template("index.html", ip_candidates=ip_candidates)
+    return render_template("app.html", page="index", ip_candidates=ip_candidates)
 
 
 @app.route("/sender")
 def sender_page():
-    # Frontend will request /api/session/new
-    return render_template("sender.html")
+    return render_template("app.html", page="sender")
 
 
 @app.route("/receiver")
 def receiver_page():
-    # Can accept ?session=ABC123 for convenience
     session_prefill = request.args.get("session", "")
-    return render_template("receiver.html", session_prefill=session_prefill)
+    return render_template("app.html", page="receiver", session_prefill=session_prefill)
 
 
 @app.route("/about")
 def about_page():
-    return render_template("about.html")
+    return render_template("app.html", page="about")
 
 
 # ---------------------------------------

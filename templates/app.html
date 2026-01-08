@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>ShareLite - Local Share</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <a class="brand-link" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="ShareLite" class="logo-img">
+        <span class="name">ShareLite</span>
+      </a>
+    </div>
+    <div class="header-right">
+      <button id="navToggle" class="btn icon-btn" aria-label="Menu" aria-controls="mainNav" aria-expanded="false">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+      </button>
+      <nav class="nav" id="mainNav">
+        <a href="{{ url_for('index') }}" class="nav-home"><i class="fa-solid fa-house" aria-hidden="true"></i> Home</a>
+        <a href="{{ url_for('sender_page') }}" class="nav-send"><i class="fa-solid fa-upload" aria-hidden="true"></i> Send</a>
+        <a href="{{ url_for('receiver_page') }}" class="nav-receive"><i class="fa-solid fa-download" aria-hidden="true"></i> Receive</a>
+        <a href="{{ url_for('about_page') }}" class="nav-about"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> About</a>
+      </nav>
+      <button id="themeToggle" class="btn icon-btn" aria-label="Toggle theme" title="Toggle theme">
+        <i class="fa-solid fa-moon" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    {% if page == 'index' %}
+    <section class="hero">
+      <h1>Fast local file sharing</h1>
+      <p>Send files to nearby devices connected to the same Wi‑Fi / LAN.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="{{ url_for('sender_page') }}"><i class="fa-solid fa-upload" aria-hidden="true"></i> Send</a>
+        <a class="btn btn-secondary" href="{{ url_for('receiver_page') }}"><i class="fa-solid fa-download" aria-hidden="true"></i> Receive</a>
+      </div>
+    </section>
+
+    <section class="card qr-card">
+      <div>
+        <h2>How to use ShareLite</h2>
+        <ol>
+          <li>Open the <strong>Send</strong> page on the machine that has the files.</li>
+          <li>Click <strong>New Session</strong>, select files and start the upload.</li>
+          <li>On the receiving device, open the <strong>Receive</strong> page and scan the QR code or enter the session code.</li>
+          <li>Download the files — no internet or cloud required.</li>
+          <li>Keep both devices on the same Wi‑Fi/LAN and ensure the sender stays awake/unlocked during transfer.</li>
+        </ol>
+      </div>
+      <div>
+        {% set selected_ip = ip_candidates[0] if ip_candidates else request.host.split(':')[0] %}
+        {% set port = request.environ.get('SERVER_PORT', '5000') %}
+        {% set share_url = ('http://' ~ selected_ip ~ ':' ~ port) %}
+        <h2>Quick Scan</h2>
+        <p class="muted">Scan this from the receiver device to open ShareLite on the sender machine.</p>
+        <div class="qr-grid">
+          <div class="qr-item">
+            <img src="{{ url_for('api_qr_png') }}?text={{ share_url | urlencode }}&size=256" alt="QR: {{ share_url }}">
+          </div>
+        </div>
+        <p class="qr-address"><strong>Address:</strong> <code>{{ share_url }}</code></p>
+      </div>
+    </section>
+    {% elif page == 'sender' %}
+    <section class="card">
+      <h2>Sender Mode</h2>
+      <p>1) Click “New Session” to get a session code. 2) Select files. 3) Click “Start Upload”.</p>
+      <div class="session-block">
+        <button id="newSessionBtn" class="btn btn-primary">New Session</button>
+        <div id="sessionInfo" class="session-info hidden">
+          <div>Session Code:</div>
+          <div class="session-code" id="sessionCode"></div>
+          <div class="muted">Share this code with the receiver.</div>
+          <div class="muted" id="localIps"></div>
+        </div>
+      </div>
+      <div class="upload-block">
+        <label class="file-input">
+          <input id="fileInput" type="file" multiple />
+          <span>Select Files</span>
+        </label>
+        <div id="selectedFiles" class="selected-files"></div>
+        <div class="muted">Max per file: <strong data-bytes="{{ max_file_size }}"></strong> (<span id="maxSize"></span>)</div>
+        <button id="uploadBtn" class="btn btn-secondary" disabled>Start Upload</button>
+        <div class="progress"><div id="uploadProgress" class="progress-bar" style="width:0%">0%</div></div>
+        <div id="uploadStatus" class="status"></div>
+      </div>
+    </section>
+    {% elif page == 'receiver' %}
+    <section class="card">
+      <h2>Receiver Mode</h2>
+      <p>Enter the session code shared by the sender. Open this page from the sender’s IP (e.g., <code>http://192.168.x.x:5000</code>).</p>
+      <div class="receiver-form">
+        <div class="form-row">
+          <label>Session Code</label>
+          <input type="text" id="sessionInput" placeholder="e.g., ABC123" value="{{ session_prefill }}">
+        </div>
+        <div class="form-actions">
+          <button id="connectBtn" class="btn btn-primary">Connect</button>
+        </div>
+      </div>
+      <div id="filesPanel" class="hidden">
+        <h3>Available Files</h3>
+        <div id="filesList" class="files-list"></div>
+        <div class="form-actions">
+          <button id="downloadSelectedBtn" class="btn btn-secondary" disabled>Download Selected</button>
+          <button id="refreshBtn" class="btn">Refresh</button>
+        </div>
+        <div class="download-progress-wrapper hidden" id="downloadProgressWrapper">
+          <div class="progress"><div id="downloadProgress" class="progress-bar" style="width:0%">0%</div></div>
+          <div id="downloadStatus" class="status"></div>
+        </div>
+      </div>
+    </section>
+    {% elif page == 'about' %}
+    <section class="card">
+      <h2>About ShareLite</h2>
+      <p>ShareLite is a lightweight local LAN file‑sharing web app. It lets you quickly send files to nearby devices on the same network without uploading to the internet.</p>
+      <ul>
+        <li>Works over local Wi‑Fi / LAN</li>
+        <li>No cloud required — files stay on your machine</li>
+        <li>Simple sender/receiver workflow</li>
+      </ul>
+      <p class="muted">Version: development</p>
+    </section>
+    {% elif page == '404' %}
+    <section class="card">
+      <h2>Not Found</h2>
+      <p>The resource you requested does not exist.</p>
+      <p><a class="btn" href="{{ url_for('index') }}">Back to Home</a></p>
+    </section>
+    {% endif %}
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="footer-line footer-links">
+        <a href="{{ url_for('index') }}">Home</a><span>·</span>
+        <a href="{{ url_for('sender_page') }}">Send</a><span>·</span>
+        <a href="{{ url_for('receiver_page') }}">Receive</a><span>·</span>
+        <a href="{{ url_for('about_page') }}">About</a><span>·</span>
+        <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <div class="footer-line muted">ShareLite — transfers stay local on your LAN. No cloud, no uploads. Made with ♥.</div>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

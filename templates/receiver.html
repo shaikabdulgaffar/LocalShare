@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Receiver Mode</h2>
+  <p>Enter the session code shared by the sender. Open this page from the sender’s IP (e.g., <code>http://192.168.x.x:5000</code>).</p>
+
+  <div class="receiver-form">
+    <div class="form-row">
+      <label>Session Code</label>
+      <input type="text" id="sessionInput" placeholder="e.g., ABC123" value="{{ session_prefill }}">
+    </div>
+    <div class="form-actions">
+      <button id="connectBtn" class="btn btn-primary">Connect</button>
+    </div>
+  </div>
+
+  <div id="filesPanel" class="hidden">
+    <h3>Available Files</h3>
+    <div id="filesList" class="files-list"></div>
+    <div class="form-actions">
+      <button id="downloadSelectedBtn" class="btn btn-secondary" disabled>Download Selected</button>
+      <button id="refreshBtn" class="btn">Refresh</button>
+    </div>
+
+    <div class="download-progress-wrapper hidden" id="downloadProgressWrapper">
+      <div class="progress">
+        <div id="downloadProgress" class="progress-bar" style="width:0%">0%</div>
+      </div>
+      <div id="downloadStatus" class="status"></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/receiver.js') }}" defer></script>
+{% endblock %}

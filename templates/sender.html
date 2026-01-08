@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Sender Mode</h2>
+  <p>1) Click “New Session” to get a session code. 2) Select files. 3) Click “Start Upload”.</p>
+
+  <div class="session-block">
+    <button id="newSessionBtn" class="btn btn-primary">New Session</button>
+    <div id="sessionInfo" class="session-info hidden">
+      <div>Session Code:</div>
+      <div class="session-code" id="sessionCode"></div>
+      <div class="muted">Share this code with the receiver.</div>
+      <div class="muted" id="localIps"></div>
+    </div>
+  </div>
+
+  <div class="upload-block">
+    <label class="file-input">
+      <input id="fileInput" type="file" multiple />
+      <span>Select Files</span>
+    </label>
+    <div id="selectedFiles" class="selected-files"></div>
+    <div class="muted">Max per file: <strong data-bytes="{{ max_file_size }}"></strong> (<span id="maxSize"></span>)</div>
+    <button id="uploadBtn" class="btn btn-secondary" disabled>Start Upload</button>
+
+    <div class="progress">
+      <div id="uploadProgress" class="progress-bar" style="width:0%">0%</div>
+    </div>
+    <div id="uploadStatus" class="status"></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/sender.js') }}" defer></script>
+{% endblock %}

@@ -1,10 +1,10 @@
 import os
-import io
-import time
-import uuid
-import socket
 import shutil
 import threading
+import socket
+import time
+import uuid
+import io
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, List
@@ -19,7 +19,8 @@ from werkzeug.exceptions import RequestEntityTooLarge
 # Configuration
 # ---------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
-SESSIONS_DIR = BASE_DIR / "tmp" / "sessions"  # Temporary folder for session files
+# Store all uploaded files directly in tmp (no per-session folders)
+SESSIONS_DIR = BASE_DIR / "tmp"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Max individual file size (in bytes).
@@ -104,27 +105,22 @@ def ensure_session(session_id: str) -> Dict[str, Any]:
     """Create a session if it doesn't exist; return the session dict."""
     with SESSIONS_LOCK:
         sess = SESSIONS.get(session_id)
-        if sess:
-            return sess
-        sess_dir = SESSIONS_DIR / session_id
-        sess_dir.mkdir(parents=True, exist_ok=True)
-        sess = {
-            "id": session_id,
-            "dir": str(sess_dir),
-            "created_at": time.time(),
-            "last_activity": time.time(),
-            "files": []
-        }
-        SESSIONS[session_id] = sess
+        if not sess:
+            sess = {
+                "id": session_id,
+                # No per-session dir anymore; keep root for reference
+                "dir": str(SESSIONS_DIR),
+                "created_at": time.time(),
+                "last_activity": time.time(),
+                "files": [],
+            }
+            SESSIONS[session_id] = sess
         return sess
 
 
 def get_session(session_id: str) -> Dict[str, Any]:
     with SESSIONS_LOCK:
-        sess = SESSIONS.get(session_id)
-        if not sess:
-            abort(404, description="Session not found")
-        return sess
+        return SESSIONS.get(session_id)
 
 
 def touch_session(session_id: str):
@@ -140,33 +136,48 @@ def safe_join(base: Path, *paths) -> Path:
     """
     final_path = (base.joinpath(*paths)).resolve()
     if not str(final_path).startswith(str(base.resolve())):
-        abort(400, description="Invalid file path")
+        abort(400, "Invalid path")
     return final_path
 
 
 def delete_session(session_id: str):
-    """Remove session folder and metadata."""
+    """Remove session files (saved directly in tmp) and metadata."""
     with SESSIONS_LOCK:
         sess = SESSIONS.pop(session_id, None)
+
     if sess:
-        try:
-            shutil.rmtree(sess["dir"], ignore_errors=True)
-        except Exception:
-            pass
+        # Delete each saved file for this session
+        for f in list(sess.get("files", [])):
+            try:
+                p = safe_join(SESSIONS_DIR, f["saved_name"])
+                if p.exists():
+                    p.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    # Back-compat: remove any legacy tmp/sessions/<id> folder if it exists
+    legacy_dir = BASE_DIR / "tmp" / "sessions" / session_id
+    try:
+        if legacy_dir.exists():
+            shutil.rmtree(legacy_dir, ignore_errors=True)
+    except Exception:
+        pass
 
 
 def cleanup_expired_sessions():
     """Background thread to delete sessions that have timed out."""
     while True:
-        now = time.time()
-        to_delete = []
-        with SESSIONS_LOCK:
-            for sid, sess in list(SESSIONS.items()):
-                last = sess.get("last_activity", 0)
-                if now - last > SESSION_TTL_SECONDS:
-                    to_delete.append(sid)
-        for sid in to_delete:
-            delete_session(sid)
+        try:
+            now = time.time()
+            expired = []
+            with SESSIONS_LOCK:
+                for sid, sess in list(SESSIONS.items()):
+                    if now - sess.get("last_activity", now) > SESSION_TTL_SECONDS:
+                        expired.append(sid)
+            for sid in expired:
+                delete_session(sid)
+        except Exception:
+            pass
         time.sleep(CLEANUP_INTERVAL_SECONDS)
 
 
@@ -228,57 +239,43 @@ def api_new_session():
 
 @app.route("/api/upload/<session_id>", methods=["POST"])
 def api_upload(session_id):
-    """
-    Upload multiple files to a session.
-    Form-data key: "files" (can be multiple).
-    """
     sess = ensure_session(session_id)
-    # Validate files present
-    if "files" not in request.files:
-        abort(400, description="No files part in request")
     files = request.files.getlist("files")
     if not files:
-        abort(400, description="No files selected")
+        return jsonify({"ok": False, "error": "No files provided"}), 400
 
-    saved = []
-    sess_dir = Path(sess["dir"])
-
-    for f in files:
-        if not f.filename:
+    uploaded = []
+    for file in files:
+        if not file or not file.filename:
             continue
-        # Basic filename sanitization to prevent traversal
-        original_name = f.filename
-        safe_name = secure_filename(original_name)
-        if not safe_name:
-            abort(400, description="Invalid filename")
+        original_name = secure_filename(file.filename)
+        if not original_name:
+            continue
 
-        # Generate a unique saved filename to avoid collisions
-        file_id = uuid.uuid4().hex
-        # Preserve extension if any
-        ext = "".join(Path(safe_name).suffixes)
-        saved_name = f"{file_id}{ext}"
+        # Unique saved name directly under tmp with session prefix
+        fid = uuid.uuid4().hex
+        saved_name = f"{session_id}__{fid}__{original_name}"
+        dest = safe_join(SESSIONS_DIR, saved_name)
 
-        # Save to session directory
-        dest_path = safe_join(sess_dir, saved_name)
-        # Save file in chunks
-        f.save(str(dest_path))
+        file.save(str(dest))
+        size = dest.stat().st_size
 
-        size = dest_path.stat().st_size
-        saved.append({
-            "id": file_id,
+        meta = {
+            "id": fid,
             "name": original_name,
             "saved_name": saved_name,
             "size": size,
-            "downloaded": False
-        })
+        }
+        uploaded.append(meta)
 
-    # Update session metadata atomically
+    if not uploaded:
+        return jsonify({"ok": False, "error": "Nothing uploaded"}), 400
+
     with SESSIONS_LOCK:
-        sess = SESSIONS[session_id]
-        sess["files"].extend(saved)
+        sess["files"].extend(uploaded)
         sess["last_activity"] = time.time()
 
-    return jsonify({"ok": True, "uploaded": [{"id": x["id"], "name": x["name"], "size": x["size"]} for x in saved]})
+    return jsonify({"ok": True, "uploaded": uploaded})
 
 
 @app.route("/api/files/<session_id>", methods=["GET"])
@@ -302,53 +299,27 @@ def api_list_files(session_id):
 
 @app.route("/download/<session_id>/<file_id>", methods=["GET"])
 def download_file(session_id, file_id):
-    """
-    Download a specific file by its id within a session.
-    After successful download completes, delete the file from disk
-    and mark/remove from session.
-    """
     sess = get_session(session_id)
-    sess_dir = Path(sess["dir"])
-    fmeta = None
-    for f in sess["files"]:
-        if f["id"] == file_id:
-            fmeta = f
-            break
-    if not fmeta:
-        abort(404, description="File not found")
+    if not sess:
+        abort(404)
 
-    file_path = safe_join(sess_dir, fmeta["saved_name"])
-    if not file_path.exists():
-        abort(404, description="File already downloaded or missing")
+    meta = next((f for f in sess.get("files", []) if f["id"] == file_id), None)
+    if not meta:
+        abort(404)
 
-    # Use send_file so Content-Length is set; helps clients display progress.
-    resp = send_file(
-        str(file_path),
-        as_attachment=True,
-        download_name=fmeta["name"],
-        conditional=True,
-        max_age=0
-    )
+    path = safe_join(SESSIONS_DIR, meta["saved_name"])
+    if not path.exists():
+        abort(404)
 
-    def _cleanup():
-        try:
-            # Delete the file after download
-            if file_path.exists():
-                file_path.unlink(missing_ok=True)
-        except Exception:
-            pass
-        # Update session metadata; remove file entry or mark downloaded
-        with SESSIONS_LOCK:
-            sess2 = SESSIONS.get(session_id)
-            if sess2:
-                sess2["files"] = [x for x in sess2["files"] if x["id"] != file_id]
-                sess2["last_activity"] = time.time()
-            # If no files left, we keep session alive until TTL, so receiver can see empty list or sender can re-upload.
-
-    # Cleanup when response is closed (download completed or aborted).
-    resp.call_on_close(_cleanup)
     touch_session(session_id)
-    return resp
+    return send_file(str(path), as_attachment=True, download_name=meta["name"])
+
+
+@app.route("/api/session/end/<session_id>", methods=["POST", "GET"])
+def api_end_session(session_id):
+    """End a session and delete its files (stored directly in tmp)."""
+    delete_session(session_id)
+    return jsonify({"ok": True})
 
 
 # ---------------------------------------

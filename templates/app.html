@@ -26,9 +26,6 @@
         <a href="{{ url_for('receiver_page') }}" class="nav-receive"><i class="fa-solid fa-download" aria-hidden="true"></i> Receive</a>
         <a href="{{ url_for('about_page') }}" class="nav-about"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> About</a>
       </nav>
-      <button id="themeToggle" class="btn icon-btn" aria-label="Toggle theme" title="Toggle theme">
-        <i class="fa-solid fa-moon" aria-hidden="true"></i>
-      </button>
     </div>
   </header>
 
@@ -69,56 +66,137 @@
       </div>
     </section>
     {% elif page == 'sender' %}
-    <section class="card">
-      <h2>Sender Mode</h2>
-      <p>1) Click “New Session” to get a session code. 2) Select files. 3) Click “Start Upload”.</p>
-      <div class="session-block">
-        <button id="newSessionBtn" class="btn btn-primary">New Session</button>
-        <div id="sessionInfo" class="session-info hidden">
-          <div>Session Code:</div>
-          <div class="session-code" id="sessionCode"></div>
-          <div class="muted">Share this code with the receiver.</div>
-          <div class="muted" id="localIps"></div>
+    <!-- provide max size to JS via data attribute -->
+    <div data-bytes="{{ max_file_size }}"></div>
+
+    <div class="container send-page initial" id="sendPage">
+      <!-- single-column sender UI (shown after session creation) -->
+      <div id="senderGrid" class="hidden">
+        <div class="card send-area">
+          <div class="session-header">
+            <h2>Your Session Code</h2>
+            <div class="session-code-wrap">
+              <div id="sessionCodePanel" class="session-code"></div>
+              <button class="copy-btn copy-session-btn" data-copy-session="sessionCodePanel" aria-label="Copy session code">
+                <i class="fa-regular fa-copy" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" multiple>
+            <div class="drop-inner">
+              <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+              <div class="drop-text">Click or drag files here</div>
+              <div class="muted">Max size per file: <span id="maxSize"></span></div>
+            </div>
+          </div>
+
+          <div id="selectedFiles" class="selected-files"></div>
+
+          <div class="uploader-actions">
+            <button id="uploadBtn" class="btn btn-primary" disabled>
+              <i class="fa-solid fa-upload"></i> Upload Files
+            </button>
+            <button id="clearBtn" class="btn btn-secondary">
+              <i class="fa-solid fa-trash"></i> Clear Selection
+            </button>
+          </div>
+
+          <div class="progress">
+            <div id="uploadProgress" class="progress-bar" style="width:0%">0%</div>
+          </div>
+          <div id="uploadStatus" class="muted"></div>
         </div>
       </div>
-      <div class="upload-block">
-        <label class="file-input">
-          <input id="fileInput" type="file" multiple />
-          <span>Select Files</span>
-        </label>
-        <div id="selectedFiles" class="selected-files"></div>
-        <div class="muted">Max per file: <strong data-bytes="{{ max_file_size }}"></strong> (<span id="maxSize"></span>)</div>
-        <button id="uploadBtn" class="btn btn-secondary" disabled>Start Upload</button>
-        <div class="progress"><div id="uploadProgress" class="progress-bar" style="width:0%">0%</div></div>
-        <div id="uploadStatus" class="status"></div>
-      </div>
-    </section>
+    </div>
     {% elif page == 'receiver' %}
-    <section class="card">
-      <h2>Receiver Mode</h2>
-      <p>Enter the session code shared by the sender. Open this page from the sender’s IP (e.g., <code>http://192.168.x.x:5000</code>).</p>
-      <div class="receiver-form">
-        <div class="form-row">
-          <label>Session Code</label>
-          <input type="text" id="sessionInput" placeholder="e.g., ABC123" value="{{ session_prefill }}">
-        </div>
-        <div class="form-actions">
-          <button id="connectBtn" class="btn btn-primary">Connect</button>
+    <div class="container receive-page initial" id="receivePage">
+      <div class="card main-hero">
+        <h1 class="text-center">Receive Files</h1>
+        <p class="muted text-center">Enter the 6-character session code shared by the sender to start receiving files.</p>
+        
+        <div class="receiver-form">
+          <!-- inline input + button -->
+          <div class="form-row row-inline">
+            <label for="sessionInput" class="visually-hidden">Session Code</label>
+            <input 
+              type="text" 
+              id="sessionInput" 
+              placeholder="ABC123" 
+              value="{{ session_prefill }}" 
+              autocomplete="off"
+              maxlength="6"
+              aria-label="Enter session code"
+            >
+            <button id="connectBtn" class="btn btn-primary">
+              <i class="fa-solid fa-link"></i> Connect
+            </button>
+          </div>
+
+          <!-- helper + examples on same row -->
+          <div class="form-row helpers-row">
+            <div class="input-helper">Ask the sender for the session code</div>
+            <div class="code-examples">
+              <span class="code-example">Example: ABC123</span>
+              <span class="code-example">Format: 6 chars</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div id="filesPanel" class="hidden">
-        <h3>Available Files</h3>
-        <div id="filesList" class="files-list"></div>
-        <div class="form-actions">
-          <button id="downloadSelectedBtn" class="btn btn-secondary" disabled>Download Selected</button>
-          <button id="refreshBtn" class="btn">Refresh</button>
-        </div>
-        <div class="download-progress-wrapper hidden" id="downloadProgressWrapper">
-          <div class="progress"><div id="downloadProgress" class="progress-bar" style="width:0%">0%</div></div>
-          <div id="downloadStatus" class="status"></div>
+
+      <div id="receiverGrid" class="hidden">
+        <div class="card receiver-grid-card">
+          <div class="receiver-top">
+            <div class="session-header">
+              <h2>Session</h2>
+              <div class="session-code-wrap">
+                <div id="sessionCodePanelR" class="session-code"></div>
+                <button class="copy-btn copy-session-btn" data-copy-session="sessionCodePanelR" aria-label="Copy session code">
+                  <i class="fa-regular fa-copy" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="receiver-actions">
+              <button id="refreshBtn" class="btn btn-sm"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+              <button id="leaveSessionBtn" class="btn btn-sm"><i class="fa-solid fa-door-open"></i> Leave</button>
+            </div>
+          </div>
+
+          <div class="receiver-columns">
+            <section class="files-column">
+              <h3><i class="fa-solid fa-folder-open"></i> Available Files</h3>
+              <div id="filesList" class="files-list"></div>
+              <div class="download-actions">
+                <button id="downloadSelectedBtn" class="btn btn-secondary" disabled>
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Download Selected
+                </button>
+              </div>
+            </section>
+
+            <aside class="details-column">
+              <h3><i class="fa-solid fa-eye"></i> Preview</h3>
+              <div id="filePreview" class="file-preview">
+                <i class="fa-solid fa-folder-open file-preview-icon"></i>
+                <div class="muted">Select a file to preview</div>
+              </div>
+              
+              <div class="details-progress">
+                <div class="progress-label" style="display:none;">
+                  <i class="fa-solid fa-spinner"></i>
+                  <span>Progress</span>
+                </div>
+                <div class="progress">
+                  <div id="downloadProgress" class="progress-bar" style="width:0%">0%</div>
+                </div>
+                <div id="downloadStatus" class="muted"></div>
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
     {% elif page == 'about' %}
     <section class="card">
       <h2>About ShareLite</h2>
@@ -142,13 +220,15 @@
   <footer class="app-footer">
     <div class="footer-inner">
       <div class="footer-line footer-links">
-        <a href="{{ url_for('index') }}">Home</a><span>·</span>
-        <a href="{{ url_for('sender_page') }}">Send</a><span>·</span>
-        <a href="{{ url_for('receiver_page') }}">Receive</a><span>·</span>
-        <a href="{{ url_for('about_page') }}">About</a><span>·</span>
-        <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+        <a href="{{ url_for('index') }}"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span></a><span class="sep">·</span>
+        <a href="{{ url_for('sender_page') }}"><i class="fa-solid fa-upload" aria-hidden="true"></i><span>Send</span></a><span class="sep">·</span>
+        <a href="{{ url_for('receiver_page') }}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>Receive</span></a><span class="sep">·</span>
+        <a href="{{ url_for('about_page') }}"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>About</span></a><span class="sep">·</span>
+        <a href="https://github.com/" target="_blank" rel="noopener"><i class="fa-brands fa-github" aria-hidden="true"></i><span>GitHub</span></a>
       </div>
-      <div class="footer-line muted">ShareLite — transfers stay local on your LAN. No cloud, no uploads. Made with ♥.</div>
+      <div class="footer-line footer-quote muted">
+        "ShareLite - Fast, private transfers on your local network. Made with ❤️"
+      </div>
     </div>
   </footer>
 

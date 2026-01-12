@@ -198,15 +198,59 @@
       </div>
     </div>
     {% elif page == 'about' %}
-    <section class="card">
-      <h2>About ShareLite</h2>
-      <p>ShareLite is a lightweight local LAN file‑sharing web app. It lets you quickly send files to nearby devices on the same network without uploading to the internet.</p>
-      <ul>
-        <li>Works over local Wi‑Fi / LAN</li>
-        <li>No cloud required — files stay on your machine</li>
-        <li>Simple sender/receiver workflow</li>
-      </ul>
-      <p class="muted">Version: development</p>
+    <section class="about-hero">
+      <div class="about-inner container card">
+        <div class="about-main">
+          <h1>ShareLite</h1>
+          <p class="lead">Fast, private local file sharing. No cloud, no fuss — just a simple web UI to transfer files across devices on the same LAN.</p>
+
+          <div class="about-cta">
+            <a class="btn btn-primary" href="{{ url_for('sender_page') }}"><i class="fa-solid fa-upload"></i> Start Sending</a>
+            <a class="btn" href="https://github.com/" target="_blank" rel="noopener"><i class="fa-brands fa-github"></i> View on GitHub</a>
+          </div>
+
+          <div class="features-grid" aria-hidden="false">
+            <article class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+              <h3>Private & Local</h3>
+              <p>Files stay on your machine and transfer over your LAN only.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-bolt"></i></div>
+              <h3>Fast Transfers</h3>
+              <p>Lightweight server and direct downloads keep speeds high.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-user-check"></i></div>
+              <h3>Simple Workflow</h3>
+              <p>Create a session, upload files, receivers enter the code — done.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon"><i class="fa-solid fa-lock-open"></i></div>
+              <h3>No Account Required</h3>
+              <p>No signups, no cloud storage — ephemeral sessions with automatic cleanup.</p>
+            </article>
+          </div>
+        </div>
+
+        <aside class="about-side">
+          <div class="meta-card">
+            <h4>Quick Facts</h4>
+            <div class="meta-row"><span>Version</span><strong>development</strong></div>
+            <div class="meta-row"><span>Session TTL</span><strong>{{ (session_ttl_seconds // 60) }} min</strong></div>
+            <div class="meta-row"><span>Max file</span><strong>{{ (max_file_size // (1024*1024*1024)) }} GB</strong></div>
+          </div>
+
+          <div class="meta-card small">
+            <h4>Get help</h4>
+            <p class="muted">Report issues or request features on the project repository.</p>
+            <p><a class="btn btn-secondary" href="https://github.com/" target="_blank" rel="noopener"><i class="fa-brands fa-github"></i> Open GitHub</a></p>
+          </div>
+        </aside>
+      </div>
     </section>
     {% elif page == '404' %}
     <section class="card">
